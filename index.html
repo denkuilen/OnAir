@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Taakbeheer</title>
+  <title>Taken</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { margin: 0; padding: 0; }
+    html, body { margin: 0; padding: 0; background: #0f0f11; }
   </style>
 </head>
 <body>
@@ -26,7 +26,7 @@
 
     const defaultTodos = [
       { id: 1, title: "Eerste taak instellen", done: false },
-      { id: 2, title: "Iframe configureren", done: false },
+      { id: 2, title: "Tweede taak instellen", done: false },
       { id: 3, title: "Taken aanvinken", done: false },
     ];
 
@@ -39,11 +39,7 @@
         const load = async () => {
           try {
             const result = await storage.get(STORAGE_KEY);
-            if (result?.value) {
-              setTodos(JSON.parse(result.value));
-            } else {
-              setTodos(defaultTodos);
-            }
+            setTodos(result?.value ? JSON.parse(result.value) : defaultTodos);
           } catch {
             setTodos(defaultTodos);
           }
@@ -58,17 +54,12 @@
       }, [todos, loaded]);
 
       const toggle = (id) =>
-        setTodos((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
-        );
+        setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
 
       const addTodo = () => {
         const trimmed = newTitle.trim();
         if (!trimmed) return;
-        setTodos((prev) => [
-          ...prev,
-          { id: Date.now(), title: trimmed, done: false },
-        ]);
+        setTodos((prev) => [...prev, { id: Date.now(), title: trimmed, done: false }]);
         setNewTitle("");
       };
 
@@ -76,154 +67,82 @@
         setTodos((prev) => prev.filter((t) => t.id !== id));
 
       return (
-        <div
-          style={{
-            background: "#0f0f11",
-            fontFamily: "'Courier New', monospace",
-            color: "#e8e4db",
-            padding: "16px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: "10px",
-                letterSpacing: "4px",
-                color: "#4a4a55",
-                textTransform: "uppercase",
-                marginBottom: "14px",
-                paddingLeft: "2px",
-              }}
-            >
-              Taken
-            </div>
+        <div style={{ background: "#0f0f11", fontFamily: "'Courier New', monospace", color: "#e8e4db", padding: "16px" }}>
 
-            {todos.length === 0 && (
+          {todos.length === 0 && (
+            <div style={{ padding: "24px", textAlign: "center", color: "#3a3a45", fontSize: "12px", letterSpacing: "2px", border: "1px dashed #2a2a2e", borderRadius: "3px" }}>
+              Geen taken
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            {todos.map((todo, i) => (
               <div
+                key={todo.id}
+                onClick={() => toggle(todo.id)}
                 style={{
-                  padding: "24px",
-                  textAlign: "center",
-                  color: "#3a3a45",
-                  fontSize: "12px",
-                  letterSpacing: "2px",
-                  border: "1px dashed #2a2a2e",
-                  borderRadius: "3px",
+                  display: "flex", alignItems: "center", padding: "13px 16px",
+                  background: todo.done ? "#111113" : "#16161e",
+                  border: `1px solid ${todo.done ? "#1e1e22" : "#252530"}`,
+                  borderRadius: "3px", gap: "14px", cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  animation: `fadeSlide 0.2s ease ${i * 0.04}s both`,
                 }}
               >
-                Geen taken
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {todos.map((todo, i) => (
-                <div
-                  key={todo.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "13px 16px",
-                    background: todo.done ? "#111113" : "#16161e",
-                    border: `1px solid ${todo.done ? "#1e1e22" : "#252530"}`,
-                    borderRadius: "3px",
-                    gap: "14px",
-                    transition: "all 0.15s ease",
-                    cursor: "pointer",
-                    animation: `fadeSlide 0.2s ease ${i * 0.04}s both`,
-                  }}
-                  onClick={() => toggle(todo.id)}
-                >
-                  <div
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "3px",
-                      border: `1.5px solid ${todo.done ? "#c8a96e" : "#454550"}`,
-                      background: todo.done ? "#c8a96e" : "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {todo.done && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4L3.5 6.5L9 1" stroke="#0f0f11" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: "14px",
-                      letterSpacing: "0.3px",
-                      color: todo.done ? "#454550" : "#d8d4cb",
-                      textDecoration: todo.done ? "line-through" : "none",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {todo.title}
-                  </span>
-
-                  <span
-                    style={{
-                      fontSize: "16px",
-                      color: "#2e2e38",
-                      lineHeight: 1,
-                      padding: "0 4px",
-                      cursor: "pointer",
-                      transition: "color 0.1s",
-                    }}
-                    onClick={(e) => { e.stopPropagation(); removeTodo(todo.id); }}
-                    onMouseEnter={(e) => (e.target.style.color = "#884444")}
-                    onMouseLeave={(e) => (e.target.style.color = "#2e2e38")}
-                    title="Verwijder taak"
-                  >
-                    ×
-                  </span>
+                <div style={{
+                  width: "18px", height: "18px", borderRadius: "3px", flexShrink: 0,
+                  border: `1.5px solid ${todo.done ? "#c8a96e" : "#454550"}`,
+                  background: todo.done ? "#c8a96e" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.15s ease",
+                }}>
+                  {todo.done && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="#0f0f11" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
                 </div>
-              ))}
-            </div>
 
-            <div style={{ display: "flex", marginTop: "12px" }}>
-              <input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTodo()}
-                placeholder="Nieuwe taak toevoegen..."
-                style={{
-                  flex: 1,
-                  background: "#13131a",
-                  border: "1px solid #252530",
-                  borderRight: "none",
-                  borderRadius: "3px 0 0 3px",
-                  padding: "11px 16px",
-                  color: "#d8d4cb",
-                  fontSize: "13px",
-                  fontFamily: "'Courier New', monospace",
-                  letterSpacing: "0.3px",
-                  outline: "none",
-                }}
-              />
-              <button
-                onClick={addTodo}
-                style={{
-                  background: "#c8a96e",
-                  border: "1px solid #c8a96e",
-                  borderRadius: "0 3px 3px 0",
-                  padding: "11px 20px",
-                  color: "#0f0f11",
-                  fontSize: "13px",
-                  fontFamily: "'Courier New', monospace",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  letterSpacing: "1px",
-                }}
-              >
-                +
-              </button>
-            </div>
+                <span style={{
+                  flex: 1, fontSize: "14px", letterSpacing: "0.3px",
+                  color: todo.done ? "#454550" : "#d8d4cb",
+                  textDecoration: todo.done ? "line-through" : "none",
+                  transition: "all 0.15s ease",
+                }}>
+                  {todo.title}
+                </span>
+
+                <span
+                  onClick={(e) => { e.stopPropagation(); removeTodo(todo.id); }}
+                  onMouseEnter={(e) => (e.target.style.color = "#884444")}
+                  onMouseLeave={(e) => (e.target.style.color = "#2e2e38")}
+                  style={{ fontSize: "16px", color: "#2e2e38", lineHeight: 1, padding: "0 4px", cursor: "pointer", transition: "color 0.1s" }}
+                  title="Verwijder taak"
+                >×</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", marginTop: "8px" }}>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTodo()}
+              placeholder="Nieuwe taak toevoegen..."
+              style={{
+                flex: 1, background: "#13131a", border: "1px solid #252530", borderRight: "none",
+                borderRadius: "3px 0 0 3px", padding: "11px 16px", color: "#d8d4cb",
+                fontSize: "13px", fontFamily: "'Courier New', monospace", letterSpacing: "0.3px", outline: "none",
+              }}
+            />
+            <button
+              onClick={addTodo}
+              style={{
+                background: "#c8a96e", border: "1px solid #c8a96e", borderRadius: "0 3px 3px 0",
+                padding: "11px 20px", color: "#0f0f11", fontSize: "13px",
+                fontFamily: "'Courier New', monospace", fontWeight: "bold", cursor: "pointer", letterSpacing: "1px",
+              }}
+            >+</button>
           </div>
 
           <style>{`
