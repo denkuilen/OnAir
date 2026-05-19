@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taken</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; background: #ffffff; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const storage = window.storage ?? {
+      get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
+      set: (key, value) => { localStorage.setItem(key, value); return Promise.resolve(); },
+    };
+
+    const STORAGE_KEY = "notion-todo-items";
+
+    const defaultTodos = [
+      { id: 1, title: "Eerste taak instellen", done: false },
+      { id: 2, title: "Tweede taak instellen", done: false },
+      { id: 3, title: "Taken aanvinken", done: false },
+    ];
+
+    function Checkbox({ checked, onChange }) {
+      return (
+        <div
+          onClick={onChange}
+          style={{
+            width: "16px", height: "16px", borderRadius: "3px", flexShrink: 0,
+            border: `1.5px solid ${checked ? "#2eaadc" : "#c7c7c7"}`,
+            background: checked ? "#2eaadc" : "#ffffff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", transition: "all 0.12s ease",
+          }}
+        >
+          {checked && (
+            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+              <path d="M1 3.5L3.2 5.8L8 1" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+      );
+    }
+
+    function TodoItem({ todo, onToggle, onRemove, onEdit }) {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(todo.title);
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        if (editing) inputRef.current?.focus();
+      }, [editing]);
+
+      const commit = () => {
+        const trimmed = draft.trim();
+        if (trimmed) onEdit(trimmed);
+        else setDraft(todo.title);
+        setEditing(false);
+      };
+
+      return (
+        <div
+          style={{
+            display: "flex", alignItems: "center", padding: "3px 4px",
+            borderRadius: "3px", gap: "8px", background: "transparent",
+            transition: "background 0.1s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f1ef")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        >
+          <Checkbox checked={todo.done} onChange={() => onToggle(todo.id)} />
+
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") { setDraft(todo.title); setEditing(false); }
+              }}
+              style={{
+                flex: 1, border: "none", outline: "none", fontSize: "14px",
+                fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                color: "#37352f", background: "transparent", padding: "0",
+              }}
+            />
+          ) : (
+            <span
+              onDoubleClick={() => !todo.done && setEditing(true)}
+              style={{
+                flex: 1, fontSize: "14px",
+                fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                color: todo.done ? "#a3a3a3" : "#37352f",
+                textDecoration: todo.done ? "line-through" : "none",
+                cursor: "text", lineHeight: "1.5",
+              }}
+            >
+              {todo.title}
+            </span>
+          )}
+
+          <span
+            onClick={() => onRemove(todo.id)}
+            onMouseEnter={(e) => (e.target.style.color = "#eb5757")}
+            onMouseLeave={(e) => (e.target.style.color = "transparent")}
+            style={{
+              fontSize: "16px", color: "transparent", cursor: "pointer",
+              transition: "color 0.1s", lineHeight: 1, padding: "0 2px",
+              userSelect: "none",
+            }}
+            title="Verwijder taak"
+          >×</span>
+        </div>
+      );
+    }
+
+    function App() {
+      const [todos, setTodos] = useState([]);
+      const [loaded, setLoaded] = useState(false);
+      const [newTitle, setNewTitle] = useState("");
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        const load = async () => {
+          try {
+            const result = await storage.get(STORAGE_KEY);
+            setTodos(result?.value ? JSON.parse(result.value) : defaultTodos);
+          } catch {
+            setTodos(defaultTodos);
+          }
+          setLoaded(true);
+        };
+        load();
+      }, []);
+
+      useEffect(() => {
+        if (!loaded) return;
+        storage.set(STORAGE_KEY, JSON.stringify(todos)).catch(() => {});
+      }, [todos, loaded]);
+
+      const toggle = (id) =>
+        setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+
+      const remove = (id) =>
+        setTodos((prev) => prev.filter((t) => t.id !== id));
+
+      const edit = (id, title) =>
+        setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
+
+      const addTodo = () => {
+        const trimmed = newTitle.trim();
+        if (!trimmed) return;
+        setTodos((prev) => [...prev, { id: Date.now(), title: trimmed, done: false }]);
+        setNewTitle("");
+        inputRef.current?.focus();
+      };
+
+      const doneCount = todos.filter((t) => t.done).length;
+
+      return (
+        <div style={{
+          background: "#ffffff",
+          fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          color: "#37352f", padding: "16px 16px 12px",
+          maxWidth: "600px",
+        }}>
+
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "12px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "#37352f", letterSpacing: "0.01em" }}>
+              Taken
+            </span>
+            {todos.length > 0 && (
+              <span style={{ fontSize: "11px", color: "#a3a3a3" }}>
+                {doneCount}/{todos.length}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+            {todos.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={toggle}
+                onRemove={remove}
+                onEdit={(title) => edit(todo.id, title)}
+              />
+            ))}
+          </div>
+
+          <div
+            onClick={() => inputRef.current?.focus()}
+            style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              padding: "3px 4px", marginTop: "4px", borderRadius: "3px",
+              cursor: "text",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f1ef")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <div style={{
+              width: "16px", height: "16px", flexShrink: 0, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              color: "#c7c7c7", fontSize: "18px", lineHeight: 1, marginTop: "-1px",
+            }}>+</div>
+            <input
+              ref={inputRef}
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTodo()}
+              placeholder="Nieuwe taak"
+              style={{
+                flex: 1, border: "none", outline: "none", background: "transparent",
+                fontSize: "14px",
+                fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                color: "#37352f", padding: "0",
+              }}
+            />
+          </div>
+
+          <style>{`
+            * { box-sizing: border-box; }
+            input::placeholder { color: #a3a3a3; }
+          `}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
