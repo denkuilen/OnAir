@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taakbeheer</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Fallback storage using localStorage when window.storage is unavailable
+    const storage = window.storage ?? {
+      get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
+      set: (key, value) => { localStorage.setItem(key, value); return Promise.resolve(); },
+    };
+
+    const STORAGE_KEY = "todo-items";
+
+    const defaultTodos = [
+      { id: 1, title: "Eerste taak instellen", done: false },
+      { id: 2, title: "Iframe configureren", done: false },
+      { id: 3, title: "Taken aanvinken", done: false },
+    ];
+
+    function App() {
+      const [todos, setTodos] = useState([]);
+      const [newTitle, setNewTitle] = useState("");
+      const [loaded, setLoaded] = useState(false);
+
+      useEffect(() => {
+        const load = async () => {
+          try {
+            const result = await storage.get(STORAGE_KEY);
+            if (result?.value) {
+              setTodos(JSON.parse(result.value));
+            } else {
+              setTodos(defaultTodos);
+            }
+          } catch {
+            setTodos(defaultTodos);
+          }
+          setLoaded(true);
+        };
+        load();
+      }, []);
+
+      useEffect(() => {
+        if (!loaded) return;
+        storage.set(STORAGE_KEY, JSON.stringify(todos)).catch(() => {});
+      }, [todos, loaded]);
+
+      const toggle = (id) =>
+        setTodos((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+        );
+
+      const addTodo = () => {
+        const trimmed = newTitle.trim();
+        if (!trimmed) return;
+        setTodos((prev) => [
+          ...prev,
+          { id: Date.now(), title: trimmed, done: false },
+        ]);
+        setNewTitle("");
+      };
+
+      const removeTodo = (id) =>
+        setTodos((prev) => prev.filter((t) => t.id !== id));
+
+      const pending = todos.filter((t) => !t.done).length;
+
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#0f0f11",
+            fontFamily: "'Courier New', monospace",
+            color: "#e8e4db",
+            padding: "0",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              width: "100%",
+              borderBottom: "1px solid #2a2a2e",
+              padding: "18px 32px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              boxSizing: "border-box",
+              background: "#0f0f11",
+            }}
+          >
+            <span style={{ fontSize: "11px", letterSpacing: "4px", color: "#5a5a60", textTransform: "uppercase" }}>
+              TAAKBEHEER
+            </span>
+            <span style={{ flex: 1 }} />
+            <span
+              style={{
+                fontSize: "11px",
+                letterSpacing: "2px",
+                color: "#c8b89a",
+                background: "#1e1c17",
+                border: "1px solid #3a3228",
+                padding: "3px 10px",
+                borderRadius: "2px",
+              }}
+            >
+              {pending} open
+            </span>
+          </div>
+
+          <div style={{ width: "100%", maxWidth: "760px", padding: "0 24px", boxSizing: "border-box" }}>
+
+            {/* Iframe placeholder */}
+            <div
+              style={{
+                margin: "28px 0 0 0",
+                border: "1px solid #2a2a2e",
+                borderRadius: "4px",
+                overflow: "hidden",
+                background: "#13131a",
+              }}
+            >
+              <div
+                style={{
+                  padding: "7px 14px",
+                  background: "#18181f",
+                  borderBottom: "1px solid #2a2a2e",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#3a3a40", display: "inline-block" }} />
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#3a3a40", display: "inline-block" }} />
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#3a3a40", display: "inline-block" }} />
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: "10px", color: "#3a3a45", letterSpacing: "2px" }}>IFRAME</span>
+              </div>
+              <div
+                style={{
+                  height: "220px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#2e2e38",
+                  fontSize: "12px",
+                  letterSpacing: "3px",
+                  textTransform: "uppercase",
+                }}
+              >
+                uw iframe hier
+              </div>
+            </div>
+
+            {/* Todo lijst */}
+            <div style={{ marginTop: "28px" }}>
+              <div
+                style={{
+                  fontSize: "10px",
+                  letterSpacing: "4px",
+                  color: "#4a4a55",
+                  textTransform: "uppercase",
+                  marginBottom: "14px",
+                  paddingLeft: "2px",
+                }}
+              >
+                Taken
+              </div>
+
+              {todos.length === 0 && (
+                <div
+                  style={{
+                    padding: "24px",
+                    textAlign: "center",
+                    color: "#3a3a45",
+                    fontSize: "12px",
+                    letterSpacing: "2px",
+                    border: "1px dashed #2a2a2e",
+                    borderRadius: "3px",
+                  }}
+                >
+                  Geen taken
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {todos.map((todo, i) => (
+                  <div
+                    key={todo.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "13px 16px",
+                      background: todo.done ? "#111113" : "#16161e",
+                      border: `1px solid ${todo.done ? "#1e1e22" : "#252530"}`,
+                      borderRadius: "3px",
+                      gap: "14px",
+                      transition: "all 0.15s ease",
+                      cursor: "pointer",
+                      animation: `fadeSlide 0.2s ease ${i * 0.04}s both`,
+                    }}
+                    onClick={() => toggle(todo.id)}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        borderRadius: "3px",
+                        border: `1.5px solid ${todo.done ? "#c8a96e" : "#454550"}`,
+                        background: todo.done ? "#c8a96e" : "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {todo.done && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="#0f0f11" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+
+                    {/* Titel */}
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: "14px",
+                        letterSpacing: "0.3px",
+                        color: todo.done ? "#454550" : "#d8d4cb",
+                        textDecoration: todo.done ? "line-through" : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {todo.title}
+                    </span>
+
+                    {/* Verwijder */}
+                    <span
+                      style={{
+                        fontSize: "16px",
+                        color: "#2e2e38",
+                        lineHeight: 1,
+                        padding: "0 4px",
+                        cursor: "pointer",
+                        transition: "color 0.1s",
+                      }}
+                      onClick={(e) => { e.stopPropagation(); removeTodo(todo.id); }}
+                      onMouseEnter={(e) => (e.target.style.color = "#884444")}
+                      onMouseLeave={(e) => (e.target.style.color = "#2e2e38")}
+                      title="Verwijder taak"
+                    >
+                      ×
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Nieuwe taak invoer */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0",
+                  marginTop: "12px",
+                }}
+              >
+                <input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addTodo()}
+                  placeholder="Nieuwe taak toevoegen..."
+                  style={{
+                    flex: 1,
+                    background: "#13131a",
+                    border: "1px solid #252530",
+                    borderRight: "none",
+                    borderRadius: "3px 0 0 3px",
+                    padding: "11px 16px",
+                    color: "#d8d4cb",
+                    fontSize: "13px",
+                    fontFamily: "'Courier New', monospace",
+                    letterSpacing: "0.3px",
+                    outline: "none",
+                  }}
+                />
+                <button
+                  onClick={addTodo}
+                  style={{
+                    background: "#c8a96e",
+                    border: "1px solid #c8a96e",
+                    borderRadius: "0 3px 3px 0",
+                    padding: "11px 20px",
+                    color: "#0f0f11",
+                    fontSize: "13px",
+                    fontFamily: "'Courier New', monospace",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    letterSpacing: "1px",
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Footer ruimte */}
+            <div style={{ height: "40px" }} />
+          </div>
+
+          <style>{`
+            * { box-sizing: border-box; }
+            input::placeholder { color: #3a3a45; }
+            input:focus { border-color: #454550 !important; }
+            @keyframes fadeSlide {
+              from { opacity: 0; transform: translateY(4px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
